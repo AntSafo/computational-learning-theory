@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAC Learning and the VC Dimension</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a fixed table of contents on the left, one long reading column of nine parts on the right, statements set in ruled boxes. */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --ink:#1c1f26; --muted:#5d6472; --rule:#d8dbe1;
+  --accent:#8c1c31; --accent-soft:rgba(140,28,49,.10); --stmt:#faf6f7;
+  --display:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121419; --surface:#191c22; --ink:#e6e7ea; --muted:#9ba2ae; --rule:#2c3039;
+    --accent:#e47b8d; --accent-soft:rgba(228,123,141,.15); --stmt:#1f1b20; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121419; --surface:#191c22; --ink:#e6e7ea; --muted:#9ba2ae; --rule:#2c3039;
+  --accent:#e47b8d; --accent-soft:rgba(228,123,141,.15); --stmt:#1f1b20; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0; background:var(--bg); color:var(--ink); font:18px/1.65 var(--body)}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+
+.progress{position:fixed; top:0; left:0; height:3px; width:0; background:var(--accent); z-index:20}
+
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+aside{position:sticky; top:0; height:100vh; overflow-y:auto; padding:32px 24px 40px; border-right:1px solid var(--rule); background:var(--surface); font-family:var(--display)}
+.brand{display:flex; flex-direction:column; gap:6px; margin-bottom:28px}
+.brand .kicker{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600}
+.brand .name{font-size:19px; line-height:1.3; font-weight:600; text-wrap:balance}
+.brand .sub{font-size:14px; color:var(--muted); line-height:1.4}
+.brand .src{font-size:12.5px; color:var(--muted); line-height:1.4; margin-top:4px}
+.navhead{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600; margin:24px 0 8px}
+aside ol, aside ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+aside a{display:flex; gap:10px; align-items:baseline; padding:6px 10px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:14.5px; line-height:1.35}
+aside a:hover{background:var(--accent-soft)}
+aside a.active{background:var(--accent-soft); color:var(--accent); font-weight:600}
+aside .num{font-family:var(--mono); font-size:12px; color:var(--muted); min-width:16px; font-variant-numeric:tabular-nums}
+aside a.active .num{color:var(--accent)}
+aside .kind{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); min-width:76px}
+.menu-btn{display:none}
+
+main{padding:56px 48px 96px; min-width:0}
+.part{max-width:720px; margin:0 auto 88px; padding-top:8px}
+.part-head{border-bottom:1px solid var(--rule); padding-bottom:16px; margin-bottom:28px}
+.eyebrow{font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:0 0 10px}
+h2{font:600 36px/1.15 var(--display); margin:0; text-wrap:balance; letter-spacing:-.01em}
+h3{font:600 23px/1.3 var(--display); margin:44px 0 12px; text-wrap:balance}
+h4{font:600 18px/1.35 var(--display); margin:32px 0 8px; color:var(--ink); text-wrap:balance}
+p{margin:0 0 16px}
+ul,ol{margin:0 0 16px; padding-left:24px}
+li{margin:4px 0}
+strong{font-weight:600}
+.display{margin:18px 0; overflow-x:auto; overflow-y:hidden}
+
+.stmt{margin:26px 0; padding:18px 22px 6px; background:var(--stmt); border:1px solid var(--rule); border-left:4px solid var(--accent); border-radius:4px}
+.stmt-def{border-left-color:var(--muted)}
+.stmt-label{font:600 13px/1 var(--display); color:var(--ink); margin-bottom:12px; letter-spacing:.01em}
+.stmt-label span{color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:11.5px; margin-right:6px}
+.stmt-def .stmt-label span{color:var(--muted)}
+blockquote{margin:0}
+
+.fig{margin:32px 0; padding:20px 18px 14px; background:var(--surface); border:1px solid var(--rule); border-radius:6px}
+.fig-scroll{overflow-x:auto}
+.fig-scroll > svg{display:block; width:100%; min-width:520px; height:auto; color:var(--ink)}
+.fig figcaption{font:14px/1.45 var(--display); color:var(--muted); margin-top:10px}
+.t{fill:currentColor; font:13px var(--display)}
+.t.small{font-size:12px}
+.t.ttl{font-weight:600; font-size:15px}
+.t.mono{font-family:var(--mono)}
+.t.muted{fill:var(--muted)}
+.t.acc-t{fill:var(--accent)}
+.ln{stroke:currentColor; stroke-width:1.5; fill:none}
+.ln.acc{stroke:var(--accent); stroke-width:2}
+.ln.dash{stroke-dasharray:4 4}
+.ln.faint{stroke:var(--rule)}
+.arrowhead{fill:currentColor}
+.soft{fill:var(--accent-soft)}
+.dot-pos{fill:var(--accent)}
+.dot-neg{fill:var(--surface); stroke:currentColor; stroke-width:1.5}
+.ring{fill:none; stroke:var(--accent); stroke-width:1.5; stroke-dasharray:3 3}
+.band{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1}
+.band-rect{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.5}
+.grid{stroke:var(--rule); stroke-width:1}
+.series-all{stroke:var(--muted); stroke-dasharray:5 4}
+.series{stroke-width:2.5}
+.series-thr{stroke:currentColor; stroke-width:1.5}
+.cell{fill:var(--surface); stroke:var(--rule)}
+.cell.hl{fill:var(--accent-soft); stroke:var(--accent)}
+.cell.mist{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.5}
+.node-seen{fill:var(--surface); stroke:currentColor; stroke-width:1.5}
+.node-unseen{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.5; stroke-dasharray:4 3}
+
+.pager{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:56px; font-family:var(--display)}
+.pg{display:flex; flex-direction:column; gap:4px; padding:14px 18px; border:1px solid var(--rule); border-radius:6px; background:var(--surface); color:var(--ink); text-decoration:none; font-weight:600; font-size:15.5px}
+.pg span{font-size:12px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.07em}
+.pg:hover{border-color:var(--accent); color:var(--accent)}
+.pg.next{text-align:right; grid-column:2}
+
+mjx-container[display="true"]{margin:0 !important}
+mjx-container{color:var(--ink)}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  aside{position:fixed; inset:0 auto 0 0; width:min(320px,86vw); transform:translateX(-102%); transition:transform .2s; z-index:30; box-shadow:0 0 40px rgba(0,0,0,.2)}
+  aside.open{transform:none}
+  .menu-btn{display:inline-flex; position:sticky; top:0; z-index:25; width:100%; align-items:center; gap:10px; padding:12px 16px; border:0; border-bottom:1px solid var(--rule); background:var(--surface); color:var(--ink); font:600 15px var(--display); cursor:pointer}
+  main{padding:32px 18px 80px}
+  h2{font-size:29px}
+  body{font-size:17px}
+  .pager{grid-template-columns:1fr}
+  .pg.next{grid-column:1}
+}
+</style>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" defer></script>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<button class="menu-btn" id="menuBtn" aria-controls="sidebar" aria-expanded="false">☰ Contents</button>
+<div class="shell">
+<aside id="sidebar">
+  <div class="brand">
+    <span class="kicker">15-455 project</span>
+    <span class="name">Computational Learning Theory</span>
+    <span class="sub">The PAC model, sample complexity, and the VC dimension</span>
+    <span class="src">Primary source: Kearns and Vazirani, <em>An Introduction to Computational Learning Theory</em> (MIT Press, 1994)</span>
+  </div>
+  <div class="navhead">Parts</div>
+  <ol id="toc"><li><a href="#facts" data-sec="facts"><span class="num">·</span>Facts we use</a></li><li><a href="#introduction" data-sec="introduction"><span class="num">1</span>Introduction</a></li><li><a href="#pac-learnability" data-sec="pac-learnability"><span class="num">2</span>Introducing PAC learnability</a></li><li><a href="#thresholds" data-sec="thresholds"><span class="num">3</span>Example: threshold functions</a></li><li><a href="#finite-classes" data-sec="finite-classes"><span class="num">4</span>Finite hypothesis classes</a></li><li><a href="#vc-dimension" data-sec="vc-dimension"><span class="num">5</span>VC dimension</a></li><li><a href="#sauer-shelah" data-sec="sauer-shelah"><span class="num">6</span>The growth function and Sauer–Shelah</a></li><li><a href="#vc-bound" data-sec="vc-bound"><span class="num">7</span>The VC bound</a></li><li><a href="#fundamental-theorem" data-sec="fundamental-theorem"><span class="num">8</span>The fundamental theorem</a></li><li><a href="#closing" data-sec="closing"><span class="num">9</span>Closing remarks</a></li></ol>
+  <div class="navhead">Definitions and theorems</div>
+  <ul><li><a href="#def-pac" class="keylink"><span class="kind">Definition</span>PAC learnability</a></li><li><a href="#thm-finite" class="keylink"><span class="kind">Theorem 1</span>Finite classes</a></li><li><a href="#def-shatter" class="keylink"><span class="kind">Definition</span>Shattering</a></li><li><a href="#def-vc" class="keylink"><span class="kind">Definition</span>VC dimension</a></li><li><a href="#def-growth" class="keylink"><span class="kind">Definition</span>Growth function</a></li><li><a href="#thm-sauer" class="keylink"><span class="kind">Theorem 2</span>Sauer–Shelah</a></li><li><a href="#thm-vc" class="keylink"><span class="kind">Theorem 3</span>VC bound</a></li><li><a href="#thm-fund" class="keylink"><span class="kind">Theorem 4</span>Fundamental theorem</a></li></ul>
+</aside>
+<main id="main">
+<section class="part" id="facts"><header class="part-head"><p class="eyebrow">Reference</p><h2>Facts we use</h2></header><p>Here are some facts we use throughout the following text.</p>
+<blockquote class="stmt stmt-def" id="fact-cond"><div class="stmt-label"><span>Conditional probability</span> (Harchol-Balter, Definition 2.7)</div>
+<p>The conditional probability of event \(E\) given event \(F\) is written as \(\Pr[E\mid F]\) and is given by the following, where we assume \(\Pr[F]&gt;0\):</p>
+<div class="display">\[\Pr[E\mid F]=\frac{\Pr[E\cap F]}{\Pr[F]}\]</div>
+</blockquote>
+<blockquote class="stmt stmt-def" id="fact-total"><div class="stmt-label"><span>Law of total probability</span> (Harchol-Balter, Theorem 2.18)</div>
+<p>Let \(F_1,F_2,\dots,F_n\) partition the state space \(\Omega\). Then,</p>
+<div class="display">\[\Pr[E]=\sum_{i=1}^{n}\Pr[E\cap F_i]=\sum_{i=1}^{n}\Pr[E\mid F_i]\cdot\Pr[F_i]\]</div>
+</blockquote>
+<blockquote class="stmt stmt-def" id="fact-binom"><div class="stmt-label"><span>Binomial distribution</span> </div>
+<p>A binomial distribution on \(n\) trials and with probability \(p\) for each is the distribution of the number of successes among \(n\) Bernoulli trials, each with probability \(p\) of success.</p>
+</blockquote>
+<blockquote class="stmt stmt-def" id="fact-binom-mv"><div class="stmt-label"><span>Mean and variance of a binomial</span> </div>
+<p>If \(X\) has a binomial distribution on \(n\) trials and probability \(p\), then \(\mathbb{E}[X]=np\) and \(\mathrm{Var}(X)=np(1-p)\).</p>
+</blockquote>
+<blockquote class="stmt stmt-def" id="fact-exp"><div class="stmt-label"><span>Exponential bound</span> </div>
+<p>For all real \(x\), \(1-x\le e^{-x}\) (Taylor series: \(e^{-x}=1-x+\frac{x^2}{2!}-\frac{x^3}{3!}+\cdots\)).</p>
+</blockquote><nav class="pager" aria-label="Part navigation"><span></span><a class="pg next" href="#introduction"><span>Next</span>Introduction</a></nav></section>
+<section class="part" id="introduction"><header class="part-head"><p class="eyebrow">Part 1 of 9</p><h2>Introduction</h2></header><h3>Overview</h3>
+<p>In this guide we introduce the notion of learnability and hypothesis classes and formalize it in PAC learnability. We explore the case of finite hypothesis classes, and then introduce VC dimension to consider infinite cases. From there, we go through the Sauer–Shelah theorem, the VC bound, and finally the Fundamental Theorem of Statistical Learning to conclude that a hypothesis class is PAC learnable if and only if it has finite VC dimension.</p>
+<h3>Intro, continuity, and motivation</h3>
+<p>In UCT we have spent much time trying to understand the difficulty of various problems through the lens of complexity classes. In computational learning theory, we carry forward this effort in a new setting. Rather than solving languages, we deal with learning tasks and understanding which problems are harder and easier to learn. Here, we will focus on building an understanding of which environments are learnable at all, and identifying the properties that allow for learnability.</p>
+<h3>Setting and intro to hypothesis classes</h3>
+<p>Borrowing from <em>An Introduction to Computational Learning Theory</em> (Kearns and Vazirani), we will begin by considering a game.</p>
+<p>A learner attempts to learn a number chosen by a game master. The learner obtains information about the game master's number through examples given to them by the game master.</p>
+<p>An example is a tuple consisting of a real number sampled from some distribution, \(D\), and a value of 0 if the sampled real is less than the game master's threshold, and 1 otherwise. For example, if the game master's secret number is 1, the learner could receive examples such as \((-e, 0)\), \((1.34, 1)\), \((0, 0)\).</p>
+<figure class="fig" id="fig-game"><div class="fig-scroll"><svg viewBox="0 0 640 140" role="img" aria-label="Number line with threshold t equal to 1; examples minus e and 0 are labeled 0, example 1.34 is labeled 1." xmlns="http://www.w3.org/2000/svg"><rect x="380" y="62" width="220" height="36" class="soft"/><line x1="40" y1="80" x2="600" y2="80" class="ln"/><polygon points="608,80 600,76 600,84" class="arrowhead"/><line x1="380" y1="52" x2="380" y2="108" class="ln acc"/><text x="380" y="46" class="t acc-t" text-anchor="middle" >t = 1</text><text x="190" y="34" class="t muted" text-anchor="middle" >c*(x) = 0</text><text x="495" y="34" class="t muted" text-anchor="middle" >c*(x) = 1</text><circle cx="156.9030902924573" cy="80" r="6" class="dot-neg"/><text x="156.9030902924573" y="124" class="t" text-anchor="middle" >(−e, 0)</text><circle cx="320" cy="80" r="6" class="dot-neg"/><text x="320" y="124" class="t" text-anchor="middle" >(0, 0)</text><circle cx="400.4" cy="80" r="6" class="dot-pos"/><text x="400.4" y="124" class="t" text-anchor="middle" >(1.34, 1)</text></svg></div><figcaption>The threshold game with secret number 1 and the three example draws.</figcaption></figure>
+
+<p>The goal of computational learning theory is to try to understand how many examples, if any amount, would be enough for the learner in such a game to get a pretty good estimate of the game master's secret number (which we really see as a function).</p>
+<p>More formally, the game can be seen as follows:</p>
+<ul>
+<li>The game master uses a boolean threshold function \(c^*:\mathbb{R}\to\{0,1\}\) defined by \(c^*(x)=0\) if \(x&lt;t\), \(c^*(x)=1\) if \(x\ge t\), for some secret \(t\in\mathbb{R}\) to create examples from sampled points. The function the game master picks, \(c^*\), is called a concept and the set of functions a concept can be picked from is called a concept class.</li>
+<li>Examples are tuples \((x, c^*(x))\) for instances \(x\in\mathbb{R}\) drawn i.i.d. from \(D\).</li>
+<li>The learner is some algorithm that takes in a set of examples and outputs a boolean threshold function. A function the learner can output is called a hypothesis, and the set of functions the learner may output is called a hypothesis class.</li>
+</ul>
+<p>In this case our hypothesis class was the set of boolean threshold functions, but this does not have to be the case. A large part of computational learning theory lies in the study of hypothesis classes and their properties. Additionally, the concept and hypothesis classes here were the same (the set of boolean threshold functions), and we will work under the assumption that the concept and hypothesis classes are the same, but this also does not have to be the case.</p>
+<p>Generalizing the described game, a run of a learning game consists of a learner with some hypothesis class, \(H\), of boolean functions from \(X\) to \(\{0,1\}\) for some set \(X\), and a set of examples, \(S\), produced by \(m\) i.i.d. instances from a distribution \(D\) and combining them with the output of the concept, \(c^*\). The learner takes in \(S\) and outputs a function \(f\in H\).</p>
+<p>Naturally, some outputs a learner can give us will be better at matching the outputs of the concept function. To formalize a notion of better and worse guesses, we introduce the notion of an error of a hypothesis, \(h\). In a given run of a learning game, with instances drawn from distribution \(D\), and concept, \(c^*\),</p>
+<div class="display">\[\mathrm{err}_D(h) := \Pr_{x\sim D}[h(x)\neq c^*(x)].\]</div>
+<p>This can be viewed as the expected value of an indicator random variable that equals 0 when \(h(x)=c^*(x)\) and 1 when it's not.</p>
+<p>Before we can analyze how well our learner can perform in the threshold guessing game, we must introduce the model we use for learning, and the basis of all the following discussion: PAC learnability.</p><nav class="pager" aria-label="Part navigation"><span></span><a class="pg next" href="#pac-learnability"><span>Next</span>Introducing PAC learnability</a></nav></section>
+<section class="part" id="pac-learnability"><header class="part-head"><p class="eyebrow">Part 2 of 9</p><h2>Introducing PAC learnability</h2></header><p>Perhaps unintuitively, we will look not at learning from the perspective of a learner. Because we will be placing no restrictions on the learning algorithm, when we consider how well it can pick out a hypothesis to predict a concept based on examples, really we are asking how well it is possible to pick out a good hypothesis based on some set of examples. So what's left to vary is the concept, the distribution, and the hypothesis class. (We assume here that the hypothesis class is the same as the concept class, and so will refer to both the hypothesis and concept classes as the hypothesis class from now on.)</p>
+<p>Targeting the learnability of a given concept doesn't make sense; it would be trivially easy to learn a single concept by having the learner simply output it each time. We require the learner to succeed on every concept in the hypothesis class.</p>
+<p>One can consider how well a concept can be learned based on different distributions by which instances are sampled, but this is not what we're interested in here. We would like our learner to work without knowing the distribution \(D\), and thus it must work independently of it.</p>
+<p>We find it more interesting to consider learnability from the perspective of a hypothesis class. Moreover, in the spirit of complexity theory targeting worst cases, we consider the learnability of hypothesis classes while making no assumptions about the distribution by which examples are provided or which concept from the hypothesis class is chosen.</p>
+<p>We propose the following notion of learnability and discuss the reasons for its specifics afterward:</p>
+<blockquote class="stmt stmt-def" id="def-pac"><div class="stmt-label"><span>Definition</span> PAC learnability</div>
+<p>A hypothesis class \(H\) is PAC learnable if there exist an algorithm, \(A\), and a function, \(m_H\), such that for all \(\delta,\varepsilon\in(0,1)\), every distribution \(D\), and every concept \(c^*\in H\), if the number of i.i.d. examples drawn from \(D\) and labeled by \(c^*\) given is at least \(m_H(\varepsilon,\delta)\), \(A\) outputs an \(h\) such that \(\Pr_S[\mathrm{err}_D(h)\le\varepsilon]\ge1-\delta\).</p>
+</blockquote>
+<h3>Reading the definition</h3>
+<p>It's a lot, so let's break it down.</p>
+<p>It's often easier to understand things when we turn the quantifiers into words. The definition is saying that for an \(H\) to be PAC learnable there needs to be some number of examples that, regardless of the distribution by which instances are drawn or which concept is selected, is sufficient for some learning algorithm to be able to pick out a hypothesis that has the desired error rate, with sufficiently high probability (with probability coming from the examples that happen to be sampled).</p>
+<h3>Why \(\varepsilon\) is needed</h3>
+<p>To see why the \(\varepsilon\) error term is necessary, we can consider our threshold-guessing game again. Consider what happens if we let \(D\) be the uniform distribution for interval \([0,1]\). Say the target concept has threshold \(t\), such that \(0\le t\le1\). A hypothesis, \(h\), with threshold \(\hat t\) would have \(\mathrm{err}_D(h)=|t-\hat t|\) for any \(h\) with threshold within \([0,1]\) (thresholds outside \([0,1]\) behave here like thresholds at 0 or 1, so we can ignore them). In this case, to obtain an error of 0, a hypothesis threshold would have to exactly match the threshold of the target concept. No number of examples, however, could ever tell us the exact cutoff, as to determine it, we would need to both know that an instance at that threshold is labeled 1, and any instance below is labeled 0. Clearly, because reals get arbitrarily close to one another, it's impossible to learn this from a finite number of examples. But as we will show, we can do an effective job learning what the cutoff is, we just can't get it exactly. In fact, even a class of just two hypotheses that disagree only on a single point can't be learned with zero error, since the distribution can make that point so unlikely that no reasonable number of examples will reveal it. We do not want to exclude such classes from being learnable.</p>
+<figure class="fig" id="fig-epsilon"><div class="fig-scroll"><svg viewBox="0 0 640 140" role="img" aria-label="Interval from 0 to 1 with the target threshold t and hypothesis threshold t-hat; the shaded gap between them is the error." xmlns="http://www.w3.org/2000/svg"><rect x="278.4" y="62" width="83.2" height="36" class="soft"/><line x1="60" y1="80" x2="580" y2="80" class="ln"/><line x1="60" y1="72" x2="60" y2="88" class="ln"/><line x1="580" y1="72" x2="580" y2="88" class="ln"/><text x="60" y="112" class="t" text-anchor="middle" >0</text><text x="580" y="112" class="t" text-anchor="middle" >1</text><line x1="278.4" y1="54" x2="278.4" y2="106" class="ln acc"/><text x="278.4" y="124" class="t" text-anchor="middle" >t</text><line x1="361.59999999999997" y1="54" x2="361.59999999999997" y2="106" class="ln"/><text x="361.59999999999997" y="124" class="t" text-anchor="middle" >t̂</text><text x="320.0" y="46" class="t acc-t" text-anchor="middle" >err_D(h) = |t − t̂|</text><text x="60" y="40" class="t muted" text-anchor="start" >D uniform on [0, 1]</text></svg></div><figcaption>Uniform $D$ on $[0,1]$: the error of $h$ is the length of the gap between $t$ and $\hat t$.</figcaption></figure>
+
+<h3>Why \(\delta\) is needed</h3>
+<p>To understand the necessity of the \(\delta\) term in the definition, we note that it's always possible for every example in a sample to stay entirely within some given region of non-zero probability mass. Thus, without the \(\delta\), our definition would require \(A\) to be able to make a sufficiently good guess off of effectively any non-zero probability mass region of instances. This includes regions that provide very little information about the behavior of the target concept to the learner. Meeting such a strict requirement is impossible for effectively all hypothesis classes we are interested in, and so, to bar such unhelpful edge cases from undermining the possibility of an \(H\) being learnable, it is necessary for us to allow some non-zero probability of failure to meet the necessary error rate for our \(A\).</p>
+<p>These two terms are actually where PAC learnability derives its name from. PAC stands for probably (within \(\delta\)) approximately correct (within error of \(\varepsilon\)).</p>
+<h3>What the definition allows</h3>
+<p>Notice also that our definition allows the number of examples needed for a given \(\delta\) and \(\varepsilon\) to be any finite number. Thus, as long as more examples can decrease \(\delta\) and \(\varepsilon\) across all possible distributions simultaneously, and for any target concept, a hypothesis class will be PAC learnable. Intuitively, this means more examples need to be able to let a learner "cut down" the space of hypotheses it may output to lower and lower error rate ones.</p>
+<p>Some definitions of PAC learnability choose to place a restriction on the run-time of \(A\). We choose this definition because it is the notion of learnability that the theorems we are interested in use.</p><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#introduction"><span>Previous</span>Introduction</a><a class="pg next" href="#thresholds"><span>Next</span>Example: threshold functions</a></nav></section>
+<section class="part" id="thresholds"><header class="part-head"><p class="eyebrow">Part 3 of 9</p><h2>Example: threshold functions</h2></header><p>Let's build some intuition about this by returning to our threshold guessing game from the start. We'll show that the hypothesis class, \(H\), of boolean threshold functions is, in fact, PAC learnable. To do this, we first present a learning algorithm, \(A\), and then show it satisfies the requirements.</p>
+<h3>The learner</h3>
+<p>Given a set of examples, \(S\), let \(A\) output the boolean threshold function with threshold equal to the lowest valued instance that the concept function returned 1 on. If no positive examples are given, output the threshold function with \(g+1\), where \(g\) is the largest instance that occurs among examples in \(S\) (let \(g=0\) if \(|S|=0\)), as the threshold instead.</p>
+<p>So, if \(S=\{(3,0),(12,1),(-12.2,0),(13.72,1)\}\), \(A\) will return the function \(f\in H\), where \(f(x)=0\) if \(x&lt;12\), and \(f(x)=1\) if \(x\ge12\).</p>
+<h3>Proof that threshold functions are PAC learnable</h3>
+<p>Now, fix some \(\varepsilon,\delta\in(0,1)\), some arbitrary distribution \(D\), and an arbitrary concept \(c^*\in H\); we identify a number of examples, \(m\), such that \(\Pr_S[\mathrm{err}_D(h)\le\varepsilon]\ge1-\delta\).</p>
+<h4>Case 1: at least one positive example</h4>
+<p>Let \(t\) be the real threshold of an arbitrary \(c^*\), and let \(\hat t\) be the threshold for the threshold function \(h\in H\) that \(A\) outputs based on a given set of examples, \(S\). We will assume for now that at least 1 positive example did come up in \(S\), and discuss the alternative case later.</p>
+<p>Notice, then, that \(\hat t\) is always at least as large as \(t\). This is because any positive examples, such as the one we let \(\hat t\) equal, could only have occurred for an instance that was at least \(t\). Thus, the points on which \(c^*\) and \(h\) will disagree, and thus the only region causing error, is the interval \([t,\hat t)\); \(h\) will correctly output 1 for any input larger than or equal to \(\hat t\) (since it is then also at least \(t\)), and correctly output 0 for any input less than \(t\) (since it is then also smaller than \(\hat t\)). So, using the definition of \(\mathrm{err}_D(h)\), we see that \(\mathrm{err}_D(h)=\Pr_D[[t,\hat t)]\).</p>
+<p>Instead of reasoning directly about \(\Pr_D[[t,\hat t)]\), however, we will find it useful to define another interval. Let \(k\) be the smallest real number at least as large as \(t\), such that \(\Pr_D[[t,k)]\le\varepsilon\) and \(\Pr_D[[t,k]]\ge\varepsilon\). (If no such \(k\) exists, \(\Pr_D[[t,\hat t)]&lt;\varepsilon\) since \(\Pr_D[[t,\infty)]&lt;\varepsilon\) and \([t,\hat t)\subseteq[t,\infty)\).)</p>
+<figure class="fig" id="fig-positive"><div class="fig-scroll"><svg viewBox="0 0 640 165" role="img" aria-label="Number line: negatives left of t, positives right; t-hat is the smallest positive, beyond k; bracket marks [t,k] with mass at least epsilon." xmlns="http://www.w3.org/2000/svg"><rect x="260" y="62" width="160" height="36" class="soft"/><line x1="40" y1="80" x2="600" y2="80" class="ln"/><polygon points="608,80 600,76 600,84" class="arrowhead"/><circle cx="80" cy="80" r="6" class="dot-neg"/><circle cx="135" cy="80" r="6" class="dot-neg"/><circle cx="185" cy="80" r="6" class="dot-neg"/><circle cx="228" cy="80" r="6" class="dot-neg"/><circle cx="420" cy="80" r="6" class="dot-pos"/><circle cx="478" cy="80" r="6" class="dot-pos"/><circle cx="545" cy="80" r="6" class="dot-pos"/><line x1="260" y1="54" x2="260" y2="106" class="ln acc"/><text x="260" y="124" class="t" text-anchor="middle" >t</text><line x1="360" y1="54" x2="360" y2="106" class="ln dash"/><text x="360" y="124" class="t" text-anchor="middle" >k</text><text x="420" y="124" class="t" text-anchor="middle" >t̂</text><path d="M260,44 V36 H360 V44" class="ln acc"/><text x="310" y="28" class="t acc-t" text-anchor="middle" >[t, k]: mass ≥ ε</text><text x="340" y="150" class="t muted" text-anchor="middle" >error region [t, t̂)</text><text x="150" y="150" class="t muted" text-anchor="middle" >negative examples</text><text x="490" y="150" class="t muted" text-anchor="middle" >positive examples</text></svg></div><figcaption>Case $k&lt;\hat t$: no example landed in $[t,k]$, so the error region $[t,\hat t)$ extends past $k$.</figcaption></figure>
+
+<p>We consider two exhaustive cases now:</p>
+<ul>
+<li>\(k\ge\hat t\)</li>
+<li>\(k&lt;\hat t\)</li>
+</ul>
+<p><strong>If \(k\ge\hat t\):</strong></p>
+<p>\(\Pr_D[[t,\hat t)]\le\Pr_D[[t,k)]\le\varepsilon\). So, \(\mathrm{err}_D(h)\le\varepsilon\).</p>
+<p><strong>If \(k&lt;\hat t\):</strong></p>
+<p>We are no longer able to bound the error below \(\varepsilon\). We can, however, relate the probability of this scenario occurring to \(m\), the number of examples \(A\) is given.</p>
+<p>The probability that \(k&lt;\hat t\) is at most the probability that none of \(m\) instances drawn independently from \(D\) fall within the interval \([t,k]\). The probability that a given instance falls in the interval \([t,k]\) is greater than or equal to \(\varepsilon\) by our choice of \(k\). So the probability that a given instance falls outside the interval \([t,k]\) is at most \(1-\varepsilon\). Thus, the probability that none of \(m\) instances drawn independently from \(D\) fall within the interval \([t,k]\) is at most \((1-\varepsilon)^m\). We will use this fact shortly.</p>
+<h4>Case 2: no positive examples</h4>
+<p>Now, we return to the case in which no positive instances occurred, so \(\hat t=g+1\).</p>
+<p><strong>If a \(k\) exists:</strong> any instance in \([t,k]\) would have been labeled 1, so no instance landed in \([t,k]\). By the same reasoning as in the scenario where a positive instance did occur, this has probability at most \((1-\varepsilon)^m\).</p>
+<p><strong>If no such \(k\) exists:</strong> then \(\Pr_D[[t,\infty)]&lt;\varepsilon\). We consider the two exhaustive cases:</p>
+<ul>
+<li><strong>If \(\hat t\ge t\):</strong> \(h\) errs only on \([t,\hat t)\subseteq[t,\infty)\), so \(\mathrm{err}_D(h)&lt;\varepsilon\).</li>
+<li><strong>If \(\hat t&lt;t\):</strong> Only points on the interval \([\hat t,t)\) will be incorrectly labeled by \(h\). Let \(j\) be the largest real number less than or equal to \(t\), such that \(\Pr_D[(j,t)]\le\varepsilon\) and \(\Pr_D[[j,t)]\ge\varepsilon\):<ul>
+<li>If no such \(j\) exists, then \(\Pr_D[(-\infty,t)]&lt;\varepsilon\), and since \([\hat t,t)\subseteq(-\infty,t)\), \(\mathrm{err}_D(h)&lt;\varepsilon\).</li>
+<li>If some instance lies in \([j,t)\), then \(j\le g\), so \(j&lt;\hat t\), and \([\hat t,t)\subseteq(j,t)\), so \(\mathrm{err}_D(h)\le\varepsilon\).</li>
+<li>Otherwise, no instance lies in \([j,t)\), which occurs with probability at most \((1-\varepsilon)^m\).</li>
+</ul>
+</li>
+</ul>
+<figure class="fig" id="fig-negative"><div class="fig-scroll"><svg viewBox="0 0 640 165" role="img" aria-label="Number line: all examples negative, the largest is g; t-hat equals g plus 1; bracket marks [j,t) with mass at least epsilon, containing no examples." xmlns="http://www.w3.org/2000/svg"><rect x="200" y="62" width="270" height="36" class="soft"/><line x1="40" y1="80" x2="600" y2="80" class="ln"/><polygon points="608,80 600,76 600,84" class="arrowhead"/><circle cx="70" cy="80" r="6" class="dot-neg"/><circle cx="112" cy="80" r="6" class="dot-neg"/><circle cx="150" cy="80" r="6" class="dot-neg"/><text x="150" y="124" class="t" text-anchor="middle" >g</text><line x1="200" y1="54" x2="200" y2="106" class="ln"/><text x="200" y="124" class="t" text-anchor="middle" >t̂ = g + 1</text><line x1="330" y1="54" x2="330" y2="106" class="ln dash"/><text x="330" y="124" class="t" text-anchor="middle" >j</text><line x1="470" y1="54" x2="470" y2="106" class="ln acc"/><text x="470" y="124" class="t" text-anchor="middle" >t</text><path d="M330,44 V36 H470 V44" class="ln acc"/><text x="400" y="28" class="t acc-t" text-anchor="middle" >[j, t): mass ≥ ε</text><text x="335" y="150" class="t muted" text-anchor="middle" >error region [t̂, t)</text></svg></div><figcaption>No positive examples and $\hat t&lt;t$: failure means no example landed in $[j,t)$.</figcaption></figure>
+
+<h4>Putting it together</h4>
+<p>Putting it all together, in every case either \(\mathrm{err}_D(h)\le\varepsilon\), or one of two events occurred: no instance landed in \([t,k]\), or no instance landed in \([j,t)\). Each has probability at most \((1-\varepsilon)^m\le e^{-\varepsilon m}\), so by the union bound, the probability that \(\mathrm{err}_D(h)&gt;\varepsilon\) is at most \(2e^{-\varepsilon m}\). This is at most \(\delta\) whenever \(m\ge\frac{1}{\varepsilon}\ln\frac{2}{\delta}\). Since this \(m\) depends on neither \(D\) nor \(c^*\), the class of threshold functions is PAC learnable.</p>
+<h3>A class that is not PAC learnable</h3>
+<p>Having any choice of \(m\) for a given \(\varepsilon\) and \(\delta\) may seem very powerful, so to demonstrate its limitations, consider the example of the hypothesis class of all functions \(\{0,1\}^*\to\{0,1\}\). We won't go over a formal proof of why this class is not PAC learnable yet, but the intuition behind it is that no matter how many examples you pick, there will always be functions in the hypothesis class covering every possible behavior on all unseen points. So, our sample says nothing about unseen points. Because there is an infinite number of possible input strings, we can never see all points, and because \(D\) can be chosen adversarially to the chosen \(m\), \(D\) can always place a constant amount of mass on unseen strings (for example by uniformly distributing probability mass among \(2m\) points).</p><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#pac-learnability"><span>Previous</span>Introducing PAC learnability</a><a class="pg next" href="#finite-classes"><span>Next</span>Finite hypothesis classes</a></nav></section>
+<section class="part" id="finite-classes"><header class="part-head"><p class="eyebrow">Part 4 of 9</p><h2>Finite hypothesis classes</h2></header><p>With the groundwork established, we can begin exploring which hypothesis classes are PAC learnable.</p>
+<h3>Intuition</h3>
+<p>Some readers may have noticed that our ability to choose an \(m\) after selecting a hypothesis class suggests that finite hypothesis classes should probably be PAC learnable. With a finite class, for any target concept, it seems like we should be able to obtain arbitrarily high probabilities of having low error. The intuitive reasoning goes as follows:</p>
+<p>If we select a larger and larger \(m\), if the distribution does not adversarially conceal (make unlikely to appear) differentiating examples between functions in the class (differentiating examples being examples in which the concept would label an instance differently than some hypothesis in the hypothesis class) and the target function, then we should be able to make it more and more likely that these differences occur in the examples. By then picking a function that is consistent, meaning one that matches the labeling on examples the learner saw, we can become arbitrarily likely to pick a good hypothesis, obtaining low error. This scenario can be seen as a larger \(m\) making it more and more likely to pick a good hypothesis.</p>
+<p>On the other hand, if the distribution does adversarially adjust to conceal differentiating factors between some functions in the hypothesis class and the target function, then, as a result, it must be decreasing the error across any hypotheses the differentiating examples of which it's concealing. In this scenario, the tradeoff for the distribution is that it can make the learner less confident in which hypothesis exactly the concept is, but in doing so makes these hypotheses behave more like the target on the distribution.</p>
+<p>Either way, we can see that with finite classes, as long as the learner just chooses some hypothesis from the hypothesis class that aligns with the examples given, we should be able to get better \(\varepsilon\) and \(\delta\) by increasing \(m\) as much as we want.</p>
+<p>While this is not a proof, this idea can serve as motivation for the following theorem:</p>
+<h3>Finite hypothesis class theorem</h3>
+<blockquote class="stmt stmt-thm" id="thm-finite"><div class="stmt-label"><span>Theorem 1</span> Finite hypothesis classes</div>
+<p>Let \(H\) be a finite hypothesis class and pick a target concept \(c^*\) (we assume \(c^*\in H\)). Draw a sample \(S\) of \(m\) i.i.d. examples obtained from any distribution \(D\) and labeled by \(c^*\). If
+\[m\ge\frac{1}{\varepsilon}\left(\ln|H|+\ln\frac{1}{\delta}\right),\]
+then with probability at least \(1-\delta\) over the draw of \(S\), every \(h\in H\) that is consistent with \(S\) has \(\mathrm{err}_D(h)\le\varepsilon\).</p>
+</blockquote>
+<h3>Observations</h3>
+<p>We make a few observations about this theorem before we proceed to proving it. First of all, this theorem guarantees that any consistent hypothesis will meet the \(\varepsilon\) and \(\delta\) requirements, so a learner can pick any consistent hypothesis. Secondly, the \(m\) here is a sufficient condition for the theorem's guarantee, not a minimum. The minimum needed \(m\) to guarantee this for a hypothesis class could be lower. Finally, this theorem does what we wanted in that it is sufficient to demonstrate that every finite hypothesis class is PAC learnable; for a given hypothesis class, \(H\), we can pick any learner that outputs a consistent hypothesis (for instance one that eliminates any hypotheses that are inconsistent with the provided examples and randomly returns one of the remaining hypotheses) and to meet any \(\varepsilon\) and \(\delta\), we simply pick the \(m\) the theorem gives us.</p>
+<h3>Proof</h3>
+<p>On a high level the proof will operate as follows:</p>
+<ol>
+<li>Identify the probability of a single "bad" hypothesis being consistent.</li>
+<li>Apply the union bound to bound the probability of any bad hypothesis being consistent.</li>
+<li>Solve for the \(m\) that gives us the necessary \(\delta\).</li>
+</ol>
+<p>Let \(H\) be a finite hypothesis class and pick a target concept \(c^*\in H\). Draw a sample \(S\) of \(m\) i.i.d. examples obtained from any distribution \(D\) and labeled by \(c^*\).</p>
+<h4>Part 1</h4>
+<p>We will begin by determining the probability that a given hypothesis \(h\) with \(\mathrm{err}_D(h)&gt;\varepsilon\) is consistent. For this \(h\), \(\varepsilon&lt;\mathrm{err}_D(h)=\Pr_{x\sim D}[h(x)\neq c^*(x)]\), so the total probability mass across points that \(h\) errs on is greater than \(\varepsilon\). To be consistent, \(h\)'s output on all instances seen must match their labeling in the examples, so there can be no points on which \(h\) errs which appear among instances in the examples.</p>
+<p>Recalling that \(\varepsilon&lt;\Pr_{x\sim D}[h(x)\neq c^*(x)]\), the probability of a given instance drawn from \(D\) falling on an \(x\) such that \(h(x)\neq c^*(x)\) is greater than \(\varepsilon\), so the probability of a given instance drawn from \(D\) not falling on an \(x\) such that \(h(x)\neq c^*(x)\) is at most \(1-\varepsilon\). Because the instances are drawn independently, the probability that none of the \(m\) instances drawn for the examples fall on an \(x\) such that \(h(x)\neq c^*(x)\) is at most \((1-\varepsilon)^m\).</p>
+<p>So, the probability of a given bad hypothesis being consistent is at most \((1-\varepsilon)^m\).</p>
+<h4>Part 2</h4>
+<p>We will now use the union bound to bound the probability that any hypothesis with error exceeding \(\varepsilon\) is consistent.</p>
+<p>By the union bound, the probability that any hypothesis with error exceeding \(\varepsilon\) is consistent is at most</p>
+<div class="display">\[\sum_{h:\ \mathrm{err}_D(h)&gt;\varepsilon}\Pr[h \text{ is consistent}].\]</div>
+<p>The probability that a given \(h\) with error exceeding \(\varepsilon\) is consistent, as we've determined, is bounded above by \((1-\varepsilon)^m\), and the number of possible hypotheses with error exceeding \(\varepsilon\) is at most \(|H|\). So,</p>
+<div class="display">\[\sum_{h:\ \mathrm{err}_D(h)&gt;\varepsilon}\Pr[h \text{ is consistent}]\le|H|(1-\varepsilon)^m.\]</div>
+<p>Using the hopefully familiar fact that \((1-\varepsilon)^m\le e^{-\varepsilon m}\), we show that</p>
+<div class="display">\[\sum_{h:\ \mathrm{err}_D(h)&gt;\varepsilon}\Pr[h \text{ is consistent}]\le|H|e^{-\varepsilon m}.\]</div>
+<p>Thus, the probability that no hypothesis with error exceeding \(\varepsilon\) is consistent is at least \(1-|H|e^{-\varepsilon m}\).</p>
+<h4>Part 3</h4>
+<p>We solve for an \(m\) such that \(1-|H|e^{-\varepsilon m}\ge1-\delta\).</p>
+<p>\[|H|e^{-\varepsilon m}\le\delta \iff \ln\left(|H|e^{-\varepsilon m}\right)\le\ln\delta \iff \ln|H|+\ln e^{-\varepsilon m}\le\ln\delta \iff -\varepsilon m\le\ln\delta-\ln|H|\]
+\[\iff m\ge\frac{1}{\varepsilon}\left(\ln|H|-\ln\delta\right) \iff m\ge\frac{1}{\varepsilon}\left(\ln|H|+\ln\frac{1}{\delta}\right)\]</p>
+<p>Thus, for \(m\ge\frac{1}{\varepsilon}\left(\ln|H|+\ln\frac{1}{\delta}\right)\), the probability over the draw of \(S\) that every \(h\in H\) that is consistent with \(S\) has \(\mathrm{err}_D(h)\le\varepsilon\) is at least \(1-\delta\).</p>
+<hr /><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#thresholds"><span>Previous</span>Example: threshold functions</a><a class="pg next" href="#vc-dimension"><span>Next</span>VC dimension</a></nav></section>
+<section class="part" id="vc-dimension"><header class="part-head"><p class="eyebrow">Part 5 of 9</p><h2>VC dimension</h2></header><p>Now that we've obtained such a powerful result for finite hypothesis classes, it's natural to wonder whether we can transfer some of the approaches to infinite hypothesis classes. Clearly the result of the finite hypothesis class theorem can't transfer, as plugging in infinity for \(|H|\) gives us no bound at all; the theorem only tells us a number of examples that is sufficient, and an infinite number of examples tells us nothing. Moreover, as we've shown already with the threshold function class, infinite hypothesis classes can still be PAC learnable. It seems the size of a hypothesis class is no longer properly able to capture how learnable a class is.</p>
+<p>Are there other candidate metrics for learnability? We considered earlier how the set of all boolean functions on \(\{0,1\}^*\) was so difficult to learn because adding more examples didn't help narrow the behavior of the target concept on unseen instances; given a set of examples, the target concept could still behave in any way on unseen instances because there were functions in the hypothesis class that allowed it. In that case, the "uninformative examples" property was too powerful and made the hypothesis class unlearnable (in the PAC model), but we can try to extend this idea to a weaker version to use as a metric of learnability.</p>
+<p>If, for some set of instances, a hypothesis class contains functions that can give us any given labeling of those instances, seeing examples from that set of instances doesn't help us understand what the behavior of the target concept could be like on the other instances in the set; a remaining consistent function can still impose any possible combination of labelings for the remaining instances.</p>
+<h3>Shattering</h3>
+<p>Before we can formalize this idea, we must introduce a new term: shattering.</p>
+<blockquote class="stmt stmt-def" id="def-shatter"><div class="stmt-label"><span>Definition</span> Shattering</div>
+<p>We say a hypothesis class shatters a set of instances if, for any labeling of the instances, there exists a hypothesis in the class that imposes that labeling.</p>
+</blockquote>
+<p>For instance, the hypothesis class of closed interval functions on the reals (functions that output 1 for instances in a given closed interval and 0 for instances outside of it) can shatter any set of 2 distinct instances: to label both with a 1 simply choose the function in the class with interval \([\min(s_1,s_2),\max(s_1,s_2)]\); to label both with a 0, we can choose any function from the class with an interval that doesn't include either point, for example the function with interval \([\max(s_1,s_2)+1,\max(s_1,s_2)+2]\); to label \(s_1\) with a 1 and \(s_2\) with a 0, we can choose the function with interval \([s_1,s_1]\), and to label \(s_2\) with a 1 and \(s_1\) with a 0, we can choose the function with interval \([s_2,s_2]\).</p>
+<h3>VC dimension</h3>
+<p>Now, using the notion of shattering, we are able to instantiate the metric we wanted to. It's called VC (Vapnik–Chervonenkis) dimension and works as follows:</p>
+<blockquote class="stmt stmt-def" id="def-vc"><div class="stmt-label"><span>Definition</span> VC dimension</div>
+<p>For a hypothesis class, \(H\), the VC dimension of \(H\), written as \(\mathrm{VC}(H)\), is equal to the maximum size of a set of instances that \(H\) shatters. If \(H\) can shatter sets of every finite size, we say \(H\) has an infinite VC dimension.</p>
+</blockquote>
+<p>Let's consider some examples of hypothesis classes and their VC dimensions to get a feel for this new metric.</p>
+<h3>Example: intervals</h3>
+<p>As we showed earlier, the hypothesis class of interval functions, call it \(H\), on the reals can shatter some set of two instances (any two distinct instances in fact). We now check whether this hypothesis class can shatter some set of 3 instances.</p>
+<p>Fix a set of some 3 instances, \(S=\{s_1,s_2,s_3\}\). WLOG assume \(s_1&lt;s_2&lt;s_3\). It's not hard to see that no interval function will be able to obtain a labeling of 1, 0, 1 for instances \(s_1\), \(s_2\), and \(s_3\) respectively. If \(s_1\) and \(s_3\) are labeled 1, the interval must contain both instances. But if the interval contains \(s_1\) and \(s_3\), because \(s_2\) is between them, the interval must contain it as well.</p>
+<p>So we see that no set of 3 instances can be shattered by \(H\). Moreover, we know that \(H\) can't shatter a set of instances with size greater than 3, because to do so, it would have to shatter any subset of 3 instances from that set.</p>
+<p>Since we know there exists a set of 2 instances that can be shattered by \(H\), and no larger set can be, \(\mathrm{VC}(H)=2\).</p>
+<figure class="fig" id="fig-intervals"><div class="fig-scroll"><svg viewBox="0 0 640 225" role="img" aria-label="Left: four rows showing intervals realizing labelings 11, 00, 10, 01 on two points. Right: three points labeled 1 0 1; an interval covering the outer points covers the middle one." xmlns="http://www.w3.org/2000/svg"><text x="40" y="44" class="t mono" text-anchor="start" >1 1</text><line x1="80" y1="40" x2="290" y2="40" class="ln faint"/><rect x="88" y="34" width="124" height="12" rx="6" class="band"/><circle cx="100" cy="40" r="6" class="dot-pos"/><circle cx="200" cy="40" r="6" class="dot-pos"/><text x="40" y="86" class="t mono" text-anchor="start" >0 0</text><line x1="80" y1="82" x2="290" y2="82" class="ln faint"/><rect x="233" y="76" width="44" height="12" rx="6" class="band"/><circle cx="100" cy="82" r="6" class="dot-neg"/><circle cx="200" cy="82" r="6" class="dot-neg"/><text x="40" y="128" class="t mono" text-anchor="start" >1 0</text><line x1="80" y1="124" x2="290" y2="124" class="ln faint"/><rect x="88" y="118" width="14" height="12" rx="6" class="band"/><circle cx="100" cy="124" r="6" class="dot-pos"/><circle cx="200" cy="124" r="6" class="dot-neg"/><text x="40" y="170" class="t mono" text-anchor="start" >0 1</text><line x1="80" y1="166" x2="290" y2="166" class="ln faint"/><rect x="198" y="160" width="14" height="12" rx="6" class="band"/><circle cx="100" cy="166" r="6" class="dot-neg"/><circle cx="200" cy="166" r="6" class="dot-pos"/><text x="100" y="208" class="t" text-anchor="middle" >s₁</text><text x="200" y="208" class="t" text-anchor="middle" >s₂</text><text x="175" y="18" class="t muted" text-anchor="middle" >2 points: all 4 labelings</text><line x1="330" y1="20" x2="330" y2="215" class="ln faint"/><line x1="360" y1="110" x2="610" y2="110" class="ln faint"/><rect x="393" y="104" width="174" height="12" rx="6" class="band"/><circle cx="400" cy="110" r="6" class="dot-pos"/><circle cx="480" cy="110" r="6" class="dot-neg"/><circle cx="560" cy="110" r="6" class="dot-pos"/><circle cx="480" cy="110" r="12" class="ring"/><text x="400" y="88" class="t mono" text-anchor="middle" >1</text><text x="480" y="88" class="t mono acc-t" text-anchor="middle" >0</text><text x="560" y="88" class="t mono" text-anchor="middle" >1</text><text x="400" y="208" class="t" text-anchor="middle" >s₁</text><text x="480" y="208" class="t" text-anchor="middle" >s₂</text><text x="560" y="208" class="t" text-anchor="middle" >s₃</text><text x="480" y="150" class="t acc-t" text-anchor="middle" >any interval holding s₁ and s₃ holds s₂</text><text x="480" y="18" class="t muted" text-anchor="middle" >3 points: 1 0 1 is impossible</text></svg></div><figcaption>Intervals shatter two points but cannot produce the labeling 1, 0, 1 on three.</figcaption></figure>
+
+<p>Because of the fact that a hypothesis class shattering a set means it shatters all that set's subsets, to establish that a hypothesis class \(H\)'s VC dimension is some number \(k\), it's sufficient to show a set of size \(k\) that \(H\) shatters, and show that \(H\) shatters no set of size \(k+1\).</p>
+<h3>More examples</h3>
+<p>Returning to the hypothesis class, \(H\), of all boolean functions on \(\{0,1\}^*\), it's not hard to see that \(\mathrm{VC}(H)=\infty\). For any labeling of any set of instances whatsoever, the function that labels those instances as desired and labels all other instances 0 is in \(H\). This is reassuring as it shows that VC dimension is able to accurately capture some notion of difficulty.</p>
+<p>We'll list off a couple more hypothesis classes and their VC dimensions.</p>
+<p>The hypothesis class of threshold functions has VC dimension 1. It can clearly shatter one point. For any two instances \(s_1&lt;s_2\in\mathbb{R}\), the class has no function that could label \(s_2\) as 0, but \(s_1\) as 1.</p>
+<p>The hypothesis class of closed axis-aligned rectangles on \(\mathbb{R}^2\) has VC dimension 4. You can choose rectangles to separate some 4 instances as needed, but with 5 instances, some 4 instances define the extreme values on all 4 sides (leftmost, rightmost, topmost and bottommost points), and the last point necessarily falls within these extremes. Thus, any axis-aligned rectangle containing the other 4 points must contain the last as well, not allowing the function to label the other four with a 1 and the last with a 0.</p>
+<figure class="fig" id="fig-rectangles"><div class="fig-scroll"><svg viewBox="0 0 640 230" role="img" aria-label="Left: four points in a diamond with a rectangle around two of them. Right: five points; the rectangle around the four extreme points necessarily contains the fifth." xmlns="http://www.w3.org/2000/svg"><rect x="78" y="38" width="94" height="94" class="band-rect"/><circle cx="90" cy="120" r="6" class="dot-pos"/><circle cx="160" cy="50" r="6" class="dot-pos"/><circle cx="230" cy="120" r="6" class="dot-neg"/><circle cx="160" cy="190" r="6" class="dot-neg"/><text x="160" y="218" class="t muted" text-anchor="middle" >4 points: shattered (one labeling shown)</text><rect x="388" y="38" width="164" height="164" class="band-rect"/><circle cx="400" cy="120" r="6" class="dot-pos"/><circle cx="470" cy="50" r="6" class="dot-pos"/><circle cx="540" cy="120" r="6" class="dot-pos"/><circle cx="470" cy="190" r="6" class="dot-pos"/><circle cx="478" cy="126" r="6" class="dot-neg"/><circle cx="478" cy="126" r="12" class="ring"/><text x="470" y="218" class="t muted" text-anchor="middle" >5 points: the inner point is always inside</text><line x1="315" y1="20" x2="315" y2="205" class="ln faint"/></svg></div><figcaption>Axis-aligned rectangles: four points in a diamond are shattered; with five, the extremes trap the last point.</figcaption></figure>
+
+<p>Notice that functions that are intuitively harder to learn do end up having higher VC dimension. For example, to learn a threshold function, you only need to figure out one point, while to learn a closed interval you need to guess both ends, and accordingly, the VC dimension of the interval function hypothesis class is higher. To learn a closed rectangle on \(\mathbb{R}^2\), you need to guess at more points yet, and it has a higher VC dimension than the last two.</p><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#finite-classes"><span>Previous</span>Finite hypothesis classes</a><a class="pg next" href="#sauer-shelah"><span>Next</span>The growth function and Sauer–Shelah</a></nav></section>
+<section class="part" id="sauer-shelah"><header class="part-head"><p class="eyebrow">Part 6 of 9</p><h2>The growth function and Sauer–Shelah</h2></header><p>We will prove a theorem that confirms this suspicion by showing that hypothesis classes with a higher VC dimension require more examples to learn.</p>
+<p>First though, we define the growth function.</p>
+<h3>The growth function</h3>
+<p>Let \(H\) be a hypothesis class consisting of some set of functions \(X\to\{0,1\}\). For a finite set of \(m\) points, \(S=\{x_1,\dots,x_m\}\), let \(H|_S\) be the set of distinct labelings that \(H\) can produce on \(S\):</p>
+<div class="display">\[H|_S=\{(h(x_1),\dots,h(x_m)) : h\in H\}.\]</div>
+<p>Notice that when \(H\) shatters \(S\), \(\big|H|_S\big|=2^m\).</p>
+<blockquote class="stmt stmt-def" id="def-growth"><div class="stmt-label"><span>Definition</span> Growth function</div>
+<p>The growth function of \(H\) is defined by</p>
+<div class="display">\[\Pi_H(m)=\max_{S\subseteq X,\ |S|=m}\ \big|H|_S\big|.\]</div>
+</blockquote>
+<p>That is, the growth function of \(H\) is defined to be the largest number of labelings that \(H\) can produce on any set of \(m\) instances.</p>
+<p>For example, for the hypothesis class, \(H\), of threshold functions, \(\Pi_H(m)=m+1\) because for any set of \(m\) points, a threshold function can place the threshold between any two adjacent points, before all of them, or after all of them to obtain different labelings. This sums to \(m+1\) such placements and so \(m+1\) different labelings.</p>
+<figure class="fig" id="fig-growth"><div class="fig-scroll"><svg viewBox="0 0 700 300" role="img" aria-label="Log-scale chart for m from 1 to 20: 2 to the m grows to over a million, intervals reach 211, thresholds reach 21." xmlns="http://www.w3.org/2000/svg"><line x1="80" y1="250.0" x2="550" y2="250.0" class="grid"/><text x="72" y="254.0" class="t small" text-anchor="end" >1</text><line x1="80" y1="197.5" x2="550" y2="197.5" class="grid"/><text x="72" y="201.5" class="t small" text-anchor="end" >32</text><line x1="80" y1="145.0" x2="550" y2="145.0" class="grid"/><text x="72" y="149.0" class="t small" text-anchor="end" >1,024</text><line x1="80" y1="92.5" x2="550" y2="92.5" class="grid"/><text x="72" y="96.5" class="t small" text-anchor="end" >32,768</text><line x1="80" y1="40.0" x2="550" y2="40.0" class="grid"/><text x="72" y="44.0" class="t small" text-anchor="end" >1,048,576</text><text x="80.0" y="270" class="t small" text-anchor="middle" >1</text><text x="178.94736842105263" y="270" class="t small" text-anchor="middle" >5</text><text x="302.63157894736844" y="270" class="t small" text-anchor="middle" >10</text><text x="426.3157894736842" y="270" class="t small" text-anchor="middle" >15</text><text x="550.0" y="270" class="t small" text-anchor="middle" >20</text><text x="315" y="292" class="t muted" text-anchor="middle" >number of points m</text><text x="80" y="16" class="t muted" text-anchor="start" >labelings (log scale)</text><polyline points="80.0,239.5 104.7,229.0 129.5,218.5 154.2,208.0 178.9,197.5 203.7,187.0 228.4,176.5 253.2,166.0 277.9,155.5 302.6,145.0 327.4,134.5 352.1,124.0 376.8,113.5 401.6,103.0 426.3,92.5 451.1,82.0 475.8,71.5 500.5,61.0 525.3,50.5 550.0,40.0" class="ln series-all"/><polyline points="80.0,239.5 104.7,229.0 129.5,220.5 154.2,213.7 178.9,208.0 203.7,203.2 228.4,199.0 253.2,195.3 277.9,192.0 302.6,189.0 327.4,186.3 352.1,183.8 376.8,181.5 401.6,179.4 426.3,177.4 451.1,175.5 475.8,173.7 500.5,172.0 525.3,170.4 550.0,168.9" class="ln acc series"/><polyline points="80.0,239.5 104.7,233.4 129.5,229.0 154.2,225.6 178.9,222.9 203.7,220.5 228.4,218.5 253.2,216.7 277.9,215.1 302.6,213.7 327.4,212.4 352.1,211.1 376.8,210.0 401.6,209.0 426.3,208.0 451.1,207.1 475.8,206.2 500.5,205.4 525.3,204.6 550.0,203.9" class="ln series-thr"/><circle cx="550.0" cy="168.9" r="4" class="dot-pos"/><text x="558.0" y="44.0" class="t small" text-anchor="start" >2ᵐ (all functions)</text><text x="558.0" y="172.92845851857456" class="t small acc-t" text-anchor="start" >211 (intervals, d = 2)</text><text x="558.0" y="207.88066706082301" class="t small" text-anchor="start" >21 (thresholds, d = 1)</text></svg></div><figcaption>Growth functions on a log scale: $2^m$ versus intervals and thresholds.</figcaption></figure>
+
+<p>The goal of defining this function is to look at what a VC dimension of \(d\) for a hypothesis class means when you are looking at sets of more than \(d\) points.</p>
+<p>We need to define one more function before the theorem.</p>
+<p>Define</p>
+<div class="display">\[\Phi_d(m)=\sum_{i=0}^{d}\binom{m}{i}.\]</div>
+<p>\(\Phi_d(m)\) is the number of subsets of at most \(d\) elements of an \(m\) element set.</p>
+<p>Finally, we can make the theorem statement:</p>
+<h3>Sauer–Shelah theorem</h3>
+<blockquote class="stmt stmt-thm" id="thm-sauer"><div class="stmt-label"><span>Theorem 2</span> Sauer–Shelah</div>
+<p>Let \(H\) be a hypothesis class with \(\mathrm{VC}(H)=d&lt;\infty\). Then for every \(m\),
+\[\Pi_H(m)\le\Phi_d(m).\]</p>
+</blockquote>
+<h3>Proof</h3>
+<p><strong>Proof:</strong> It ends up being easier to approach this proof by looking at sets of labelings of points rather than hypotheses. Let \(S\) be a set of \(m\) instances, and let \(F\) be any set of labelings of \(S\). We say \(F\) shatters \(T\subseteq S\) if every labeling of \(T\) appears as a restriction of labelings of \(S\) in \(F\). We define \(\mathrm{VC}(F)\) in the same way as before with the "new" notion of shattering.</p>
+<p>We claim that if \(\mathrm{VC}(F)\le d\), then \(|F|\le\Phi_d(m)\).</p>
+<p>It is useful to view each \(F\) as a set of rows of 0s and 1s on \(m\) columns, where every column corresponds to one instance in \(S\). Each row corresponds to one labeling of the instances in \(S\).</p>
+<p>In this view, we can say that \(F\) shatters a \(T\subseteq S\) if, when we ignore the columns outside those related to instances in \(T\), the resulting set of rows in \(F\) contains every possible distinct row of 0s and 1s over those columns. Notice that this is equivalent to our original notion of a set of labelings shattering a subset of \(S\). And again, our notion of VC dimension when referring to \(F\) as a table rather than a set of labelings does not need to change, since we simply substitute in this "new" notion of shattering.</p>
+<p>We use induction on \(m\) to prove a stronger claim on \(F\) using this table view, and then derive the desired claim from it.</p>
+<p>The claim we make and will prove using induction is as follows:</p>
+<blockquote class="stmt stmt-thm" id="claim-table"><div class="stmt-label"><span>Claim</span> Stronger claim, proved by induction</div>
+<p>Let \(F\) be any set of rows of 0s and 1s on \(m\) columns with \(\mathrm{VC}(F)\le d\). Then, \(|F|\le\Phi_d(m)\).</p>
+</blockquote>
+<p>The part that is stronger here is the fact that this works for any set of rows, and not one that necessarily has to correspond to a hypothesis class's labeling of \(S\).</p>
+<p><strong>Base cases:</strong></p>
+<ul>
+<li>When \(m=0\), the only possible row is the empty row, so \(|F|\le1=\Phi_d(0)\).</li>
+<li>When \(d=0\), \(F\) must not shatter any nonempty set of columns, including any single column, so all labelings in \(F\) must be the same, which means \(|F|\le1=\Phi_0(m)\).</li>
+</ul>
+<p><strong>Inductive step:</strong></p>
+<p><em>Inductive hypothesis:</em> Assume that for any \(d\) and any set of rows of 0s and 1s on \(m-1\) columns, \(F\), such that \(\mathrm{VC}(F)\le d\), \(|F|\le\Phi_d(m-1)\).</p>
+<p>We show that for any set of rows of 0s and 1s on \(m\) columns, \(F\), such that \(\mathrm{VC}(F)\le d\), \(|F|\le\Phi_d(m)\).</p>
+<p>Fix an arbitrary set of rows of 0s and 1s on \(m\) columns, \(F\), with \(\mathrm{VC}(F)\le d\), where \(d\ge1\) (the case \(d=0\) being a base case).</p>
+<p>Consider the table for \(F\), but with the last column, call it \(x\), removed. Call the set of rows on \(m-1\) columns the new table corresponds to \(F_1\). Note that because \(F_1\) is a set, any rows that are now identical in \(F_1\) get "merged" into one.</p>
+<p>Define \(F_2=\{i\in F_1 \mid F \text{ contained two distinct rows that, restricted to the first } m-1 \text{ columns, matched } i\}\).</p>
+<p>We show that \(|F|=|F_1|+|F_2|\):</p>
+<p>Every row of \(F\) with the last column deleted becomes some row in \(F_1\). Any pair of rows in \(F\) that are identical when the last column is deleted are counted only once in \(F_1\). So, \(|F|-|F_1|\) is equal to the number of pairs of rows that got "merged" from \(F\) when their last column was deleted. This is exactly the same pairs of rows that contributed a row to \(F_2\). Thus \(|F|-|F_1|=|F_2|\implies|F|=|F_1|+|F_2|\).</p>
+<figure class="fig" id="fig-table"><div class="fig-scroll"><svg viewBox="0 0 660 185" role="img" aria-label="Table F with rows 000, 001, 011, 111; deleting column x3 gives F1 with rows 00, 01, 11; F2 holds 00, the pattern that appeared with both values of x3." xmlns="http://www.w3.org/2000/svg"><text x="82" y="24" class="t ttl" text-anchor="middle" >F</text><text x="54" y="44" class="t small muted" text-anchor="middle" >x₁</text><text x="82" y="44" class="t small muted" text-anchor="middle" >x₂</text><text x="110" y="44" class="t small muted" text-anchor="middle" >x₃</text><rect x="40" y="50" width="84" height="24" class="cell hl"/><text x="54" y="67" class="t mono" text-anchor="middle" >0</text><text x="82" y="67" class="t mono" text-anchor="middle" >0</text><text x="110" y="67" class="t mono" text-anchor="middle" >0</text><rect x="40" y="76" width="84" height="24" class="cell hl"/><text x="54" y="93" class="t mono" text-anchor="middle" >0</text><text x="82" y="93" class="t mono" text-anchor="middle" >0</text><text x="110" y="93" class="t mono" text-anchor="middle" >1</text><rect x="40" y="102" width="84" height="24" class="cell"/><text x="54" y="119" class="t mono" text-anchor="middle" >0</text><text x="82" y="119" class="t mono" text-anchor="middle" >1</text><text x="110" y="119" class="t mono" text-anchor="middle" >1</text><rect x="40" y="128" width="84" height="24" class="cell"/><text x="54" y="145" class="t mono" text-anchor="middle" >1</text><text x="82" y="145" class="t mono" text-anchor="middle" >1</text><text x="110" y="145" class="t mono" text-anchor="middle" >1</text><line x1="140" y1="100" x2="230" y2="100" class="ln"/><polygon points="238,100 230,96 230,104" class="arrowhead"/><text x="185" y="90" class="t small muted" text-anchor="middle" >delete x₃</text><text x="288" y="24" class="t ttl" text-anchor="middle" >F₁</text><text x="274" y="44" class="t small muted" text-anchor="middle" >x₁</text><text x="302" y="44" class="t small muted" text-anchor="middle" >x₂</text><rect x="260" y="50" width="56" height="24" class="cell hl"/><text x="274" y="67" class="t mono" text-anchor="middle" >0</text><text x="302" y="67" class="t mono" text-anchor="middle" >0</text><rect x="260" y="76" width="56" height="24" class="cell"/><text x="274" y="93" class="t mono" text-anchor="middle" >0</text><text x="302" y="93" class="t mono" text-anchor="middle" >1</text><rect x="260" y="102" width="56" height="24" class="cell"/><text x="274" y="119" class="t mono" text-anchor="middle" >1</text><text x="302" y="119" class="t mono" text-anchor="middle" >1</text><text x="428" y="24" class="t ttl" text-anchor="middle" >F₂</text><text x="414" y="44" class="t small muted" text-anchor="middle" >x₁</text><text x="442" y="44" class="t small muted" text-anchor="middle" >x₂</text><rect x="400" y="50" width="56" height="24" class="cell hl"/><text x="414" y="67" class="t mono" text-anchor="middle" >0</text><text x="442" y="67" class="t mono" text-anchor="middle" >0</text><text x="520" y="60" class="t" text-anchor="start" >|F| = |F₁| + |F₂|</text><text x="520" y="84" class="t acc-t" text-anchor="start" >4 = 3 + 1</text><text x="430" y="150" class="t small muted" text-anchor="middle" >00 appeared with both</text><text x="430" y="166" class="t small muted" text-anchor="middle" >values of x₃</text></svg></div><figcaption>Splitting off a column for threshold functions on three points.</figcaption></figure>
+
+<p>We now need to bound the VC dimension of \(F_1\) and \(F_2\).</p>
+<p>We show that \(\mathrm{VC}(F_1)\le d\). Consider a set of \(k\) columns that \(F_1\) shatters. Then, for any possible labeling of those columns, there exists a row in \(F_1\) corresponding to that labeling. For every row in \(F_1\), however, there exists a row of \(F\) that is identical when restricted to the first \(m-1\) columns. Using our definition of shattering on tables, then, if \(F_1\) shatters a subset of columns, then \(F\) shatters that subset as well. Thus, since \(\mathrm{VC}(F)\le d\), \(\mathrm{VC}(F_1)\le d\) as well.</p>
+<p>Now, the crux of the theorem, we show that \(\mathrm{VC}(F_2)\le d-1\). Consider a set \(T\) of \(k\) columns that \(F_2\) shatters. Then, for any possible labeling of those columns, there exists a row in \(F_2\) corresponding to that labeling. For every row in \(F_2\), however, there exists a row in \(F\) that is identical when restricted to the first \(m-1\) columns. Moreover, by the construction of \(F_2\), every row in \(F_2\) corresponds to a pair of rows in \(F\) that are identical when restricted to the first \(m-1\) columns, and then one of which has 1 and one of which has 0 labeling the last column. Thus, for any set of columns, \(T\), that \(F_2\) shatters, \(F\) can actually shatter \(T\cup\{x\}\). Thus, since \(\mathrm{VC}(F)\le d\), \(\mathrm{VC}(F_2)\le d-1\).</p>
+<p>Now, bringing it all together, by our inductive hypothesis, because \(\mathrm{VC}(F_1)\le d\), \(|F_1|\le\Phi_d(m-1)\), and because \(\mathrm{VC}(F_2)\le d-1\), \(|F_2|\le\Phi_{d-1}(m-1)\).</p>
+<p>So,</p>
+<div class="display">\[|F|=|F_1|+|F_2|\le\Phi_d(m-1)+\Phi_{d-1}(m-1)=\sum_{i=0}^{d}\binom{m-1}{i}+\sum_{i=1}^{d}\binom{m-1}{i-1}.\]</div>
+<p>Using Pascal's rule, \(\binom{m-1}{i}+\binom{m-1}{i-1}=\binom{m}{i}\), we obtain</p>
+<div class="display">\[=\binom{m-1}{0}+\sum_{i=1}^{d}\binom{m}{i}=\Phi_d(m).\]</div>
+<p>So, by induction we have shown that for any set of rows of 0s and 1s on \(m\) columns, \(F\), such that \(\mathrm{VC}(F)\le d\), \(|F|\le\Phi_d(m)\).</p>
+<p>Using the equivalence of our table view of \(F\) with the set of labelings view of \(F\) (we will not prove this formally here, but hopefully it is clear enough), we can conclude that for any set of labelings of \(S\), \(F\), with \(\mathrm{VC}(F)\le d\), \(|F|\le\Phi_d(m)\).</p>
+<p>Finally, relating this back to the initial goal about hypothesis classes, consider a hypothesis class, \(H\), such that \(\mathrm{VC}(H)=d\), and consider the labelings, \(H|_S\), it imposes on the set \(S\), where \(S\) is the set of \(m\) instances on which \(H\) imposes the most labelings. Since \(\mathrm{VC}(H|_S)\le d\) as well, \(\Pi_H(m)=\big|H|_S\big|\le\Phi_d(m)\).</p>
+<p>Since \(m\) was arbitrary, we have proven the theorem.</p>
+<h3>Why Sauer–Shelah matters</h3>
+<p>It is also useful to note that for \(m\ge d\ge1\), \(\Phi_d(m)\le\left(\frac{em}{d}\right)^d\) (The proof is entirely algebraic and we omit it here; see Kearns and Vazirani, Section 3.4.)</p>
+<p>The important point of the Sauer–Shelah theorem is that the maximum number of labelings a hypothesis class can produce on \(m\) points is only exponential up to its VC dimension. After that, the number increases polynomially, as it's upper bounded by \(\left(\frac{em}{d}\right)^d\), which grows like \(m^d\). All we know about a hypothesis class once it exceeds its VC dimension is that on every set of \(d+1\) points, there's at least one labeling that the hypothesis class can't produce, but that ends up being enough to drop the growth from exponential to polynomial. This is an interesting result in its own right, but we are able to use it later to prove an even more powerful result.</p>
+<hr /><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#vc-dimension"><span>Previous</span>VC dimension</a><a class="pg next" href="#vc-bound"><span>Next</span>The VC bound</a></nav></section>
+<section class="part" id="vc-bound"><header class="part-head"><p class="eyebrow">Part 7 of 9</p><h2>The VC bound</h2></header><p>Finally, we have the tools we need to relate the difficulty of learning a hypothesis class, in terms of examples seen, to the class's VC dimension.</p>
+<h3>VC bound theorem</h3>
+<blockquote class="stmt stmt-thm" id="thm-vc"><div class="stmt-label"><span>Theorem 3</span> VC bound</div>
+<p>For any \(D\) and any \(c^*\in H\), if \(m\ge8/\varepsilon\),
+\[\Pr_S\big[\exists\, h\in H \text{ consistent with } S \text{ with } \mathrm{err}_D(h)&gt;\varepsilon\big]\ \le\ 2\,\Pi_H(2m)\,2^{-\varepsilon m/2}.\]</p>
+</blockquote>
+<p><strong>Proof:</strong> This proof works similarly to the finite hypothesis class one, in that we determine the probability of one "bad" case occurring, and then using the union bound over possible cases construct an equation for the number of examples we need to obtain the desired error and probability. The difference here is that we can no longer use the union bound across hypotheses, so we must figure out how to split up an infinite number of hypotheses into a finite number of cases we can bound over. We will do this by introducing a second, imaginary sample of examples, which will let us group hypotheses by their behavior on a finite set of points.</p>
+<p>Let \(H\) be a hypothesis class such that \(\mathrm{VC}(H)=d\), let \(c^*\in H\) be the target concept and let \(D\) be any distribution. Let \(S\) be a sample of \(m\) i.i.d. examples drawn from \(D\), such that \(m\ge8/\varepsilon\).</p>
+<h4>Events \(A\) and \(B\)</h4>
+<p>We define two events:</p>
+<p>\(A\) is the event that some \(h\in H\) is consistent with \(S\) and has \(\mathrm{err}_D(h)&gt;\varepsilon\). We are trying to bound \(A\).</p>
+<p>To define the second event \(B\), we must first introduce the idea of a ghost sample. \(S\) is the real sample of examples that our learner sees; however, for the purpose of this proof we consider an additional sample of \(m\) examples, \(S'\), also drawn i.i.d. from \(D\), and independently of the draws for \(S\).</p>
+<p>We define \(B\) to be the event that some \(h\in H\) is consistent with \(S\) and makes at least \(\varepsilon m/2\) mistakes on \(S'\).</p>
+<p>To understand why we define \(B\), and why in this way, we return to the idea for the proof. To perform the union bound we would like to split up the infinite set of hypotheses into a finite set of groups. Moreover, for our union bound, we'd like every item in the group to succeed or fail together, so that we can treat their success or failure as 1 event for the union bound we will use. The issue with trying to make some kind of grouping like this for event \(A\) is that the error of a hypothesis depends on its behavior across the entire distribution, not just points sampled. This makes grouping "similar" hypotheses based on their error together into a finite set of groups difficult; there isn't a clear, finite set of behaviors to group by.</p>
+<p>Using event \(B\) instead, however, there's a clear grouping in the labeling that hypotheses impose on the set \(S\cup S'\), as hypotheses with identical behaviors on \(S\cup S'\) will all be consistent on \(S\) together, and make at least \(\varepsilon m/2\) mistakes on \(S'\) together. And importantly, we will be able to relate the probability of making mistakes on \(S'\) to the error of a hypothesis, so we will be able to obtain a probability bound on \(A\) from \(B\).</p>
+<h4>Step 1: relating \(A\) and \(B\)</h4>
+<p>We begin by establishing the relationship between \(\Pr[B]\) and \(\Pr[A]\).</p>
+<p>For each sample \(S\) on which \(A\) occurs, let \(h_S\) be some hypothesis that is consistent on \(S\) and has \(\mathrm{err}_D(h_S)&gt;\varepsilon\) (so \(h_S\) is chosen based on \(S\)).</p>
+<div class="display">\[\Pr[B]\ge\Pr[B\cap A]=\Pr[B\mid A]\,\Pr[A]\]</div>
+<p>To determine \(\Pr[B\mid A]\) we notice that while \(h_S\) is related to points in \(S\), since we know it's consistent upon them, the points in \(S'\) are completely independent of \(h_S\). Thus, the probability of obtaining at least \(\varepsilon m/2\) errors on \(S'\) is the probability that at least \(\varepsilon m/2\) i.i.d. instances drawn from \(D\) error on \(S'\).</p>
+<p>Because we assume \(A\) occurs here, we are assuming \(\mathrm{err}_D(h_S)&gt;\varepsilon\). Define \(p=\mathrm{err}_D(h_S)\). The event of \(h_S\) erroring on a given instance of \(S'\) can be seen as a Bernoulli random variable with probability of success equal to \(p\). So, the number of errors of \(h_S\) on \(S'\) can be seen as a random variable distributed as a binomial with \(m\) trials, one for each instance in \(S'\), and probability of success of each, \(p\). We know that the expected value of such a random variable is \(mp\), and that its variance is \(mp(1-p)\). We can use Chebyshev's inequality to obtain an upper bound for the probability of \(B\) not occurring. Let \(X\) be a random variable denoting the number of errors \(h_S\) makes on \(S'\).</p>
+<div class="display">\[\Pr[\text{not } B\mid A]\le\Pr\left[X&lt;\frac{\varepsilon m}{2}\right]\le\Pr\left[|X-pm|\ge\frac{pm}{2}\right]\]</div>
+<p>Recall that Chebyshev's inequality states that for any random variable \(X\) and any \(a&gt;0\),</p>
+<div class="display">\[\Pr\big[|X-\mathbb{E}[X]|\ge a\big]\le\frac{\mathrm{Var}(X)}{a^2}.\]</div>
+<p>Thus,</p>
+<div class="display">\[\Pr\left[|X-pm|\ge\frac{pm}{2}\right]\le\frac{4mp(1-p)}{(pm)^2}=\frac{4(1-p)}{pm}&lt;\frac{4}{pm}&lt;\frac{4}{\varepsilon m}.\]</div>
+<p>Because we assumed \(m\ge8/\varepsilon\) (and in fact this is exactly why we assume this), \(\frac{4}{\varepsilon m}\le\frac12\).</p>
+<p>Thus, we have shown that \(\Pr[\text{not } B\mid A]\le\frac12\), so \(\Pr[B\mid A]\ge\frac12\). Thus, recalling that \(\Pr[B]\ge\Pr[B\mid A]\,\Pr[A]\), we now have \(\Pr[B]\ge\frac12\Pr[A]\), so \(2\Pr[B]\ge\Pr[A]\). Thus, we have shown that by bounding \(B\), we will be able to bound \(A\) as desired.</p>
+<h4>Step 2: swapping within pairs</h4>
+<p>Our goal now is to bound the probability of \(B\) occurring. To do so, we intend to take a union bound over the different events that make \(B\) true. To be able to do this, we first of all need to figure out which events these should be, and second of all, be able to compute their individual probabilities. Right now, if we try to take the events to be samplings of \(S\) and \(S'\), to determine the probabilities of different draws, we have to deal with \(D\), which we do not know. We would like a way to split up events such that \(D\) does not play into the probabilities of each one occurring.</p>
+<p>We tackle this by considering an alternate method of building up our \(S\) and \(S'\).</p>
+<p>Consider what happens if we draw our samples \(S=\{x_1,x_2,\dots,x_m\}\) and \(S'=\{x'_1,x'_2,\dots,x'_m\}\), and then pair up the instances in each to obtain a set of pairs \((S,S')=\{(x_1,x'_1),(x_2,x'_2),\dots,(x_m,x'_m)\}\). For each pair, we flip a fair coin, swapping the elements in each pair if the corresponding coin lands heads to obtain a new pair of samples \((\hat S,\hat S')\). We claim that the joint distribution from which \((S,S')\) is drawn is identical to that for drawing \((\hat S,\hat S')\). This is because the points \(x_i\) and \(x'_i\) for each \(1\le i\le m\) are i.i.d., so the pair \((x_i,x'_i)\) is equally likely to occur as \((x'_i,x_i)\) in drawing \((S,S')\). Flipping the coins can swap the pairs around, but because, regardless of the outcome, the pairs are equally likely to have occurred, \((\hat S,\hat S')\) ends up identically distributed to \((S,S')\).</p>
+<figure class="fig" id="fig-swap"><div class="fig-scroll"><svg viewBox="0 0 640 200" role="img" aria-label="Two rows S and S-prime of five paired cells; coins above each pair, heads marked with swap arrows; two shaded mistake cells both in S-prime." xmlns="http://www.w3.org/2000/svg"><text x="40" y="74" class="t ttl" text-anchor="start" >S</text><text x="40" y="124" class="t ttl" text-anchor="start" >S′</text><text x="125" y="30" class="t small muted" text-anchor="middle" >coin: T</text><rect x="90" y="52" width="70" height="34" rx="4" class="cell"/><text x="125" y="74" class="t mono" text-anchor="middle" >x₁</text><rect x="90" y="102" width="70" height="34" rx="4" class="cell"/><text x="125" y="124" class="t mono" text-anchor="middle" >x′₁</text><text x="225" y="30" class="t small muted" text-anchor="middle" >coin: H</text><rect x="190" y="52" width="70" height="34" rx="4" class="cell"/><text x="225" y="74" class="t mono" text-anchor="middle" >x₂</text><rect x="190" y="102" width="70" height="34" rx="4" class="cell mist"/><text x="225" y="124" class="t mono" text-anchor="middle" >x′₂</text><text x="225" y="99" class="t small acc-t" text-anchor="middle" >⇅ swapped</text><text x="325" y="30" class="t small muted" text-anchor="middle" >coin: T</text><rect x="290" y="52" width="70" height="34" rx="4" class="cell"/><text x="325" y="74" class="t mono" text-anchor="middle" >x₃</text><rect x="290" y="102" width="70" height="34" rx="4" class="cell"/><text x="325" y="124" class="t mono" text-anchor="middle" >x′₃</text><text x="425" y="30" class="t small muted" text-anchor="middle" >coin: H</text><rect x="390" y="52" width="70" height="34" rx="4" class="cell"/><text x="425" y="74" class="t mono" text-anchor="middle" >x₄</text><rect x="390" y="102" width="70" height="34" rx="4" class="cell mist"/><text x="425" y="124" class="t mono" text-anchor="middle" >x′₄</text><text x="425" y="99" class="t small acc-t" text-anchor="middle" >⇅ swapped</text><text x="525" y="30" class="t small muted" text-anchor="middle" >coin: T</text><rect x="490" y="52" width="70" height="34" rx="4" class="cell"/><text x="525" y="74" class="t mono" text-anchor="middle" >x₅</text><rect x="490" y="102" width="70" height="34" rx="4" class="cell"/><text x="525" y="124" class="t mono" text-anchor="middle" >x′₅</text><text x="340" y="170" class="t small" text-anchor="middle" >shaded: mistakes of one labeling (r = 2), all on the S′ side</text><text x="340" y="188" class="t small muted" text-anchor="middle" >each mistake lands in S′ with probability 1/2</text></svg></div><figcaption>Pairs $(x_i,x'_i)$ with a fair coin per pair; heads swaps the two points.</figcaption></figure>
+
+<p>This means that, writing \(W\) for the \(2m\) instances drawn i.i.d. from \(D\),</p>
+<div class="display">\[\Pr[B]=\mathbb{E}_{W}\Big[\Pr_{\text{coins}}[B\mid W]\Big].\]</div>
+<p>Thus, it suffices to show that we can obtain our desired bound for any fixed set of \(2m\) instances since if the bound holds for all possible sets of \(2m\) instances, it holds for their average as well.</p>
+<h4>Step 3: one labeling</h4>
+<p>So, we compute the bound for any fixed set of \(2m\) instances:</p>
+<p>Fix one labeling of \(2m\) points produced by some \(h\in H\). Let \(r\) be the number of instances that the labeling disagrees with \(c^*\), the target concept, on. Note that swapping instances within pairs will not change \(r\), only in which set these mistakes end up. For \(B\) to occur based on this labeling, the labeling must be consistent with \(S\), so all mistakes must occur in \(S'\), and \(r\) must be at least \(\varepsilon m/2\).</p>
+<p>Thus, the exhaustive cases are:</p>
+<ul>
+<li>\(r&lt;\varepsilon m/2\), in which case the probability that \(B\) occurs based off this case is 0.</li>
+<li>Some pair of instances consists of 2 mistakes, in which case the labeling will not be consistent with \(S\), so again the probability that \(B\) occurs based off this case is 0.</li>
+<li>Otherwise, the \(r\) mistakes end up in \(r\) different pairs. In this case, the probability that a given mistake ends up in \(S'\) is \(\frac12\), so the probability that all mistakes do is \(2^{-r}\le2^{-\varepsilon m/2}\).</li>
+</ul>
+<p>So, in each case, the probability over the coin flips that this labeling causes \(B\) to occur is at most \(2^{-\varepsilon m/2}\).</p>
+<h4>Step 4: the union bound</h4>
+<p>Now, because whether a hypothesis makes \(B\) occur depends only on its labeling of the \(2m\) instances, hypotheses with the same labelings make \(B\) occur together. This is exactly the grouping setup we wanted. Moreover, swapping based on the coin flips does not change which \(2m\) instances we have in our sample, so the set of labelings we have is fixed before coin-flipping occurs. Thus, we can conduct our union bound over the set of labelings, of which we know there are at most \(\Pi_H(2m)\). By the union bound, \(\Pr_{\text{coins}}[B\mid\text{instances}]\le\Pi_H(2m)\,2^{-\varepsilon m/2}\).</p>
+<p>Since this holds for any fixed set of instances, it holds for their average as well, so \(\Pr[B]\le\Pi_H(2m)\,2^{-\varepsilon m/2}\).</p>
+<p>Now, using the fact that \(\Pr[A]\le2\Pr[B]\) we obtain our desired result:</p>
+<div class="display">\[\Pr[A]\le2\,\Pi_H(2m)\,2^{-\varepsilon m/2},\]</div>
+<p>which concludes the proof of the theorem.</p>
+<h3>From the VC bound to PAC learnability</h3>
+<p>Plugging in our result from the Sauer–Shelah theorem, along with the fact that \(\Phi_d(2m)\le\left(\frac{2em}{d}\right)^d\) whenever \(2m\ge d\), we can then obtain that</p>
+<div class="display">\[\Pr[A]\le2\left(\frac{2em}{d}\right)^d2^{-\varepsilon m/2}.\]</div>
+<p>The right-hand side is a polynomial in \(m\) multiplied by a term that decays exponentially in \(m\), so it goes to 0 as \(m\) grows, so we can make it as small as we want.</p>
+<p>Using this, we can show (but will not prove here) that picking \(m=O\big(\frac1\varepsilon(d\log\frac1\varepsilon+\log\frac1\delta)\big)\) is enough to make this at most \(\delta\) (see Kearns and Vazirani, Theorem 3.3).</p>
+<p>Thus, we have shown that any hypothesis class with finite VC dimension is PAC learnable as we can pick any learner that outputs a consistent hypothesis and \(m\) as shown above to obtain any desired \(\varepsilon\) and \(\delta\) across all distributions \(D\), and for any target concept \(c^*\in H\).</p><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#sauer-shelah"><span>Previous</span>The growth function and Sauer–Shelah</a><a class="pg next" href="#fundamental-theorem"><span>Next</span>The fundamental theorem</a></nav></section>
+<section class="part" id="fundamental-theorem"><header class="part-head"><p class="eyebrow">Part 8 of 9</p><h2>The fundamental theorem</h2></header><p>We have discussed earlier how the hypothesis class of all boolean functions is not PAC learnable, and it's not hard to see that it can shatter any set of instances, meaning it has infinite VC dimension. It is natural then to wonder, whether a hypothesis class is PAC learnable if and only if it has finite VC dimension.</p>
+<p>Thus we come to the final theorem we will discuss here, the Fundamental Theorem of Statistical Learning.</p>
+<h3>Fundamental theorem of statistical learning</h3>
+<blockquote class="stmt stmt-thm" id="thm-fund"><div class="stmt-label"><span>Theorem 4</span> Fundamental theorem of statistical learning</div>
+<p>For a hypothesis class \(H\) of functions \(X\to\{0,1\}\):
+\[H \text{ is PAC learnable} \iff \mathrm{VC}(H)&lt;\infty.\]</p>
+</blockquote>
+<p><strong>Proof:</strong> We have already shown the reverse direction (\(\Leftarrow\)), now it remains to demonstrate the forward implication (\(\Rightarrow\)), that if a hypothesis class is PAC learnable, it has finite VC dimension. To do so, we will prove its contrapositive, and the statement we originally suspected to be true, if a hypothesis class, \(H\), has infinite VC dimension, then \(H\) is not PAC learnable.</p>
+<p>Fix some hypothesis class \(H\) such that \(\mathrm{VC}(H)=\infty\). Then, for every finite size, \(H\) shatters some set of instances of that size. We show that for \(\varepsilon=\frac18\), \(\delta=\frac18\), and any learner \(A\), for whatever choice of \(m\) is made, we can pick a distribution, \(D\), and target concept, \(c^*\), such that \(A\) cannot achieve the desired error and probability bounds.</p>
+<h4>The adversary's choice</h4>
+<p>Consider a set, \(T=\{z_1,\dots,z_{2m}\}\), of \(2m\) instances that \(H\) shatters. We define \(D\) to uniformly distribute probability mass across the \(2m\) instances in \(T\). Then, to pick a target concept, \(c^*\), we flip a coin for each instance in \(T\) to determine whether the \(c^*\) we pick will label that instance, \(z_i\), with \(y_i\in\{0,1\}\). Because \(H\) shatters \(T\), we know there exists a hypothesis in \(H\) that assigns such a labeling. Because instances outside \(T\) will not come up in the sample or in computing error, we can ignore \(c^*\)'s behavior on them, and assume we pick some arbitrary \(c^*\) that just matches our requirements for instances in \(T\).</p>
+<h4>Expected error</h4>
+<p>The idea we use here, is that at most \(m\) of the \(2m\) instances in \(T\) can come up in the sample, so \(A\) must guess about the behavior of \(c^*\) on the remaining instances. We will now bound the expected error \(A\) can obtain as a result.</p>
+<figure class="fig" id="fig-fundamental"><div class="fig-scroll"><svg viewBox="0 0 640 170" role="img" aria-label="Eight points z1 to z8; four seen with labels, four unseen marked with question marks whose labels are fair coins." xmlns="http://www.w3.org/2000/svg"><circle cx="70" cy="80" r="18" class="node-seen"/><text x="70" y="86" class="t mono" text-anchor="middle" >1</text><text x="70" y="124" class="t small muted" text-anchor="middle" >z₁</text><circle cx="140" cy="80" r="18" class="node-seen"/><text x="140" y="86" class="t mono" text-anchor="middle" >0</text><text x="140" y="124" class="t small muted" text-anchor="middle" >z₂</text><circle cx="210" cy="80" r="18" class="node-seen"/><text x="210" y="86" class="t mono" text-anchor="middle" >0</text><text x="210" y="124" class="t small muted" text-anchor="middle" >z₃</text><circle cx="280" cy="80" r="18" class="node-seen"/><text x="280" y="86" class="t mono" text-anchor="middle" >1</text><text x="280" y="124" class="t small muted" text-anchor="middle" >z₄</text><circle cx="350" cy="80" r="18" class="node-unseen"/><text x="350" y="86" class="t mono acc-t" text-anchor="middle" >?</text><text x="350" y="124" class="t small muted" text-anchor="middle" >z₅</text><circle cx="420" cy="80" r="18" class="node-unseen"/><text x="420" y="86" class="t mono acc-t" text-anchor="middle" >?</text><text x="420" y="124" class="t small muted" text-anchor="middle" >z₆</text><circle cx="490" cy="80" r="18" class="node-unseen"/><text x="490" y="86" class="t mono acc-t" text-anchor="middle" >?</text><text x="490" y="124" class="t small muted" text-anchor="middle" >z₇</text><circle cx="560" cy="80" r="18" class="node-unseen"/><text x="560" y="86" class="t mono acc-t" text-anchor="middle" >?</text><text x="560" y="124" class="t small muted" text-anchor="middle" >z₈</text><path d="M52,40 V32 H298 V40" class="ln"/><text x="175" y="24" class="t small" text-anchor="middle" >seen in the sample (at most m)</text><path d="M332,40 V32 H578 V40" class="ln acc"/><text x="455" y="24" class="t small acc-t" text-anchor="middle" >unseen (at least m): fair coins</text><text x="315" y="156" class="t small muted" text-anchor="middle" >D uniform on T = {z₁, …, z₂ₘ}, each with probability 1/(2m)</text></svg></div><figcaption>With $2m$ shattered points and $m$ draws, at least half the mass is never seen.</figcaption></figure>
+
+<p>Because any sample of \(m\) points will contain at most \(m\) distinct instances from \(T\), \(A\) cannot depend on the behavior of \(c^*\) on the remaining instances in any way. Call the set of unseen instances \(U\), \(|U|\ge m\). Because the behavior of \(c^*\) on instances in \(U\) was chosen by coin flip, whatever hypothesis, \(h\), \(A\) outputs, \(c^*\) will disagree with \(h\) on each of the at least \(m\) unseen instances with probability \(\frac12\). Notice that \(c^*\) is chosen after \(A\) is selected, so the hypothesis \(A\) outputs is fixed with respect to the unseen coin flips.</p>
+<p>We can consider the error of \(h\) on instances in \(U\) to lower bound it.</p>
+<div class="display">\[\mathrm{err}_D(h)=\frac1{2m}\sum_{i=1}^{2m}\mathbf 1[h(z_i)\ne y_i]\ \ge\ \frac1{2m}\sum_{z\in U}\mathbf 1[h(z)\ne y_z].\]</div>
+<p>So, the expected error of \(h\) over instances in \(U\):</p>
+<div class="display">\[\mathbb{E}\big[\mathrm{err}_D(h)\mid\text{the drawn instances}\big]\ge\frac{1}{2m}\cdot\frac{m}{2}=\frac14.\]</div>
+<p>And because this is true for any set of drawn instances, it is generally true that \(\mathbb{E}[\mathrm{err}_D(h)]\ge\frac14\). The expectation here is both over the random \(c^*\) that is selected, and the random sample of examples drawn.</p>
+<h4>From expectation to probability</h4>
+<p>We need to get from here, to \(\Pr[\mathrm{err}_D(h)&gt;\frac18]\ge\frac17\). So what we do, is we now consider the fact that the error of \(h\) is always in \([0,1]\).</p>
+<p>Let \(Z=\mathrm{err}_D(h)\). \(Z\) is a random variable over the random \(c^*\) that is selected, and the random sample of examples drawn.</p>
+<p>Let \(p=\Pr[Z&gt;\frac18]\).</p>
+<p>We can split \(\mathbb{E}[Z]\) into 2 components, the outcomes of \(Z\) where \(Z\le\frac18\), which occur with probability \((1-p)\), and those where \(Z&gt;\frac18\), which occur with probability \(p\).</p>
+<p>Notice that when \(Z\le\frac18\), it can contribute at most \(\frac18\) to the expectation, and when \(Z&gt;\frac18\), it can contribute at most 1 to it.</p>
+<p>So, \(\mathbb{E}[Z]\le\frac18(1-p)+(1)p=\frac18+\frac78p\).</p>
+<p>Combining this with the fact that \(\mathbb{E}[Z]\ge\frac14\), we obtain that \(\frac14\le\frac18+\frac78p\implies p\ge\frac17\).</p>
+<p>So, \(\Pr[\mathrm{err}_D(h)&gt;\frac18]\ge\frac17\).</p>
+<h4>A fixed target</h4>
+<p>We have nearly obtained the desired conclusion, now we just need to identify a fixed target \(c^*\) that achieves this same result and defeats \(A\).</p>
+<p>We can split our \(\Pr[\mathrm{err}_D(h)&gt;\frac18]\ge\frac17\) into its components of randomness. Because the probability of each set of coin flips is equally likely, the fact that the probability over the coin flips and the draw is \(\ge\frac17\) means the average probability over the draw is \(\ge\frac17\):</p>
+<div class="display">\[\Pr\big[\mathrm{err}_D(h)&gt;\tfrac18\big]=\mathbb{E}_{\text{coin flips}}\Big[\Pr\big[\mathrm{err}_D(h)&gt;\tfrac18\ \big|\ y\big]\Big]\ge\tfrac17.\]</div>
+<p>Now, because an average cannot exceed all of its constituent values, there must exist some set of coin flips, and thus some target \(c^*\), such that \(\Pr[\mathrm{err}_D(h)&gt;\frac18\mid y^*]\ge\frac17\), where \(y^*\) is the labeling \(c^*\) imposes on the instances in \(T\). \(c^*\) is no longer random, it is a fixed target.</p>
+<p>Thus, because \(A\) and \(m\) were arbitrarily chosen, we have shown that no learner with any amount of samples can meet the desired \(\varepsilon\) and \(\delta\) across all distributions and all target concepts, \(c^*\), for our hypothesis class \(H\).</p>
+<p>Thus, \(H\) is not PAC learnable, and since \(H\) was an arbitrary hypothesis class such that \(\mathrm{VC}(H)=\infty\), no hypothesis class with infinite VC dimension is PAC learnable.</p>
+<p>Thus, we have proven the forward direction, and the biimplication holds:</p>
+<div class="display">\[H\text{ is PAC learnable}\iff\mathrm{VC}(H)&lt;\infty .\]</div><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#vc-bound"><span>Previous</span>The VC bound</a><a class="pg next" href="#closing"><span>Next</span>Closing remarks</a></nav></section>
+<section class="part" id="closing"><header class="part-head"><p class="eyebrow">Part 9 of 9</p><h2>Closing remarks</h2></header><p>Put together, the theorems that we have shown here demonstrate that the maximum number of points a hypothesis class can shatter entirely determines whether it's PAC learnable. This is quite an incredible result and very neatly ties into our earlier intuitions about learnability and its limitations.</p>
+<p>There is far more to computational learning theory than this however. In the context of complexity theory, what we've studied here can be seen as the study of sample complexity. What we have investigated here is the computational learning theory equivalent of investigating which languages are computable. We are yet to dive into more practical considerations, such as which hypothesis class can be learned efficiently. The learners we have used here could exceed any practical threshold for usability; so, while we now understand something about the limits of learnability, we can say little as to the limits of techniques we may care about. Our systems for example cannot iterate through an infinite hypothesis class to pick the hypothesis that best predicts a sample, somehow, they must pick without doing so.</p>
+<p>In machine learning for instance, what we do is essentially build in the possible hypotheses a model can output into its architecture and have it glide between them using various techniques like gradient descent, but rarely do we literally take the argmin over error to pick the weights. If we wanted to look into the limits of common machine learning approaches we would need to impose some kinds of limitations on our learner.</p>
+<p>Efficient PAC learnability is a different complexity notion that is widely studied in computational learning theory and can give us more practical insights into problems of this nature, as the polynomial run-time complexity class does for us when analyzing algorithms.</p>
+<p>Regardless, hopefully this serves as a useful guide to you into the foundations of computational learning theory, and you are better equipped with intuition and theorems to venture deeper if you so desire.</p>
+<h3>References</h3>
+<p>Kearns, M. J., and Vazirani, U. V. (1994). <em>An Introduction to Computational Learning Theory</em>. MIT Press. This is the primary source for this guide.</p>
+<p>Harchol-Balter, M. (2024). <em>Introduction to Probability for Computing</em>. Cambridge University Press.</p>
+<h3>AI usage disclosure</h3>
+<p>AI was used in the creation of this website and generation of the visuals. Text is human written with AI-assisted editing; headers and figure captions are AI-generated.</p><nav class="pager" aria-label="Part navigation"><a class="pg prev" href="#fundamental-theorem"><span>Previous</span>The fundamental theorem</a><span></span></nav></section>
+</main>
+</div>
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var parts = Array.prototype.slice.call(document.querySelectorAll('.part'));
+  var bar = document.getElementById('progress');
+  function update(){
+    var y = window.scrollY + 120, cur = parts[0].id;
+    parts.forEach(function(p){ if (p.offsetTop <= y) cur = p.id; });
+    links.forEach(function(a){ a.classList.toggle('active', a.dataset.sec === cur); });
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', update, {passive:true});
+  window.addEventListener('resize', update);
+  update();
+  var btn = document.getElementById('menuBtn'), side = document.getElementById('sidebar');
+  btn.addEventListener('click', function(){
+    var open = side.classList.toggle('open'); btn.setAttribute('aria-expanded', open);
+  });
+  side.addEventListener('click', function(e){
+    if (e.target.closest('a')) { side.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+  });
+  function goHash(){
+    var id = location.hash.slice(1);
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (el) el.scrollIntoView();
+  }
+  window.addEventListener('hashchange', goHash);
+  window.addEventListener('load', function(){ setTimeout(goHash, 300); });
+})();
+</script>
+</body>
+</html>
